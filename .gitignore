@@ -1,7 +1,7 @@
 /.git
 /vendor/
 /clientSecretGoogle.json
-/compser.json
+/composer.json
 /composer.lock
 /credentialsGCalendar.json
 /credentialsGmail.json
