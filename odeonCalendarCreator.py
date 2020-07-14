@@ -98,7 +98,7 @@ def getMessageBody(service, user_id, msg_id):
     try:
         message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
         msg_str = pybase64.urlsafe_b64decode(message['raw'].encode('ASCII'))
-        mime_msg = email.message_from_string(msg_str)
+        mime_msg = email.message_from_string(msg_str.decode())
         messageMainType = mime_msg.get_content_maintype()
         if messageMainType == 'multipart':
             for part in mime_msg.get_payload():
@@ -236,7 +236,7 @@ if messages == "false":
     print("No Messages match that query, or there was a problem")
 else:
     for message in messages:
-        fullMessage = getMessageBody(gmailService, 'me', message['id'])
+        fullMessage = getMessageBody(service, 'me', message['id'])
         fullMessage = removeGarbage(fullMessage)
 
         print("***************** NEW MSG ***********************")
