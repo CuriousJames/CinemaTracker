@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from apiclient import errors
 import re
 import datetime
+import json
 
 # Setup the Gmail API
 SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar'
@@ -97,7 +98,7 @@ def getMimeMessage(service, user_id, msg_id):
 def getMessageBody(service, user_id, msg_id):
     try:
         message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
-        msg_str = pybase64.urlsafe_b64decode(message['raw'].encode('ASCII'))
+        msg_str = pybase64.urlsafe_b64decode(message['raw'].encode('UTF-8'))
         mime_msg = email.message_from_string(msg_str.decode())
         messageMainType = mime_msg.get_content_maintype()
         if messageMainType == 'multipart':
@@ -112,11 +113,17 @@ def getMessageBody(service, user_id, msg_id):
 
 
 def removeGarbage(message):
-    message = re.sub(r"=20", "", message)
-    message = re.sub(r"=EF=BF=BD", "£", message)
-    message = re.sub(r"=A3", "£", message)
-    message = re.sub(r"\.[\s]*[\n]+", "\n", message)
-    return message
+    message = re.findall(r"(Cinema:[\s\S]*?Your booking reference is:\s+[\d]*)", message)
+    try:
+        shortMessage = re.sub(r"(<[\S]*?>|[ ]*=20)", "", message[0])
+    except IndexError:
+        print("failed message main body")
+        print(json.dump(message))
+        return False
+
+    shortMessage = re.sub(r"(=EF=BF=BD|=A3)", "£", shortMessage)
+
+    return shortMessage
 
 
 def getLocation(message):
@@ -124,10 +131,10 @@ def getLocation(message):
     # regex = r"^([\s\S]*Cinema:\s)"
     # regex = r"^([\s\S]*Cinema)"
     # regex = r"^[\s\S]*Cinema "
-    regex = r"^([\s\S]*Cinema:\s)"
-    location = re.sub(regex, "", message)
-    regex2 = r"\n[\s\S]*"
-    location = re.sub(regex2, "", location)
+    # regex = r"^([\s\S]*Cinema:\s)"
+    # location = re.sub(regex, "", message)
+    # regex2 = r"\n[\s\S]*"
+    # location = re.sub(regex2, "", location)
     # location = location.splitlines()
 
     # search = re.search(r"^Cinema:\s([.*\n]+)", message, re.IGNORECASE)
@@ -137,6 +144,13 @@ def getLocation(message):
 
     # matches = re.finditer(r"^Cinema:\s([^\n]+)", message, re.MULTILINE)
     # location = matches[1]
+    regex = r"Cinema:\s+([\S\s]*?)[\r\n]+"
+    matches = re.findall(regex, message)
+    try:
+        location = matches[0]
+    except IndexError:
+        location = False
+
     return location
 
 
@@ -147,28 +161,34 @@ def getLocation(message):
 
 
 def getFilm(message):
-    regex = r"^([\s\S]*To see:\s)"
-    film = re.sub(regex, "", message)
-    regex2 = r"\n[\s\S]*"
-    film = re.sub(regex2, "", film)
+    regex = r"To see:\s([\S\s]*?)[\r\n]+"
+    matches = re.findall(regex, message)
+    try:
+        film = matches[0]
+    except IndexError:
+        film = False
 
     return film
 
 
 def getDate(message):
-    regex = r"^([\s\S]*On:\s)"
-    date = re.sub(regex, "", message)
-    regex2 = r"\n[\s\S]*"
-    date = re.sub(regex2, "", date)
+    regex = r"[\r\n]On: ([\S\s]*?)[\r\n]"
+    matches = re.findall(regex, message)
+    try:
+        date = matches[0]
+    except IndexError:
+        date = False
 
     return date
 
 
 def getScreen(message):
-    regex = r"^([\s\S]*Auditorium:[\s]*\n)"
-    screen = re.sub(regex, "", message)
-    regex2 = r"\n[\s\S]*"
-    screen = re.sub(regex2, "", screen)
+    regex = r"Auditorium:[\s]*([\s\S]*?)[\n\r]"
+    matches = re.findall(regex, message)
+    try:
+        screen = matches[0]
+    except IndexError:
+        screen = False
 
     return screen
 
@@ -183,32 +203,48 @@ def getSection(message):
 
 
 def getSeats(message):
-    regex = r"^([\s\S]*Seats:[\s]*\n)"
-    seats = re.sub(regex, "", message)
-    regex2 = r"\n[\s\S]*"
-    seats = re.sub(regex2, "", seats)
+    # Only captures first line of seats - needs to capture as many lines as there are
+    regex = r"Seats:[\s]*([\s\S]*?)[\n\r]+Tickets"
+    seatsStr = re.findall(regex, message)
+    regex2 = r"Row[\s]([\s\S]*?)[\s]Seat[\s]([\d]+)"
+    try:
+        seats = re.findall(regex2, seatsStr[0])
+    except IndexError:
+        seats = False
 
     return seats
 
 
 def getTickets(message):
-    regex = r"^([\s\S]*Tickets\*:[\s]*\n)"
-    tickets = re.sub(regex, "", message)
-    regex2 = r"\n[\s\S]*"
-    tickets = re.sub(regex2, "", tickets)
+    # Only captures first line of tickets - needs to capture as many lines as there are
+    regex = r"Tickets[\s\S]*?[\n\r]{2}([\s\S]*?)[\n\r]{4}"
+    ticketsStr = re.findall(regex, message)
+    regex2 = r"[\n\r]*([\s\S]+?): £([\d]+?.[\d]+)"
+    tickets = re.findall(regex2, ticketsStr[0])
 
     return tickets
 
 
 def getBookingRef(message):
-    regex = r"^([\s\S]*Your booking reference is:\s)"
-    bookingRef = re.sub(regex, "", message)
-    regex2 = r"\n[\s\S]*"
-    bookingRef = re.sub(regex2, "", bookingRef)
-
-    # add check to see if last char is a dot, if so remove it
+    regex = r"Your booking reference is:[\s]+([\d]*)"
+    matches = re.findall(regex, message)
+    try:
+        bookingRef = matches[0]
+    except IndexError:
+        bookingRef = False
 
     return bookingRef
+
+
+def getTotalCost(message):
+    regex = r"The amount of £([\d.]*?)[\s]"
+    matches = re.findall(regex, message)
+    try:
+        totalCost = float(matches[0])
+    except IndexError:
+        totalCost = False
+
+    return totalCost
 
 
 def scrapeOdeonTable(message):
@@ -231,36 +267,97 @@ def scrapeOdeonTable(message):
 
 messages = listMessagesMatchingQuery(service, 'me', 'from:(booking@odeoncinemas.info) subject:(ODEON BOOKING CONFIRMATION)')
 
+messageSuccessCount = 0
+locationSuccessCount = 0
+filmSuccessCount = 0
+dateSuccessCount = 0
+screenSuccessCount = 0
+seatsSuccessCount = 0
+ticketsSuccessCount = 0
+bookingRefSuccessCount = 0
+totalCostSuccessCount = 0
 
 if messages == "false":
     print("No Messages match that query, or there was a problem")
+    exit(0)
 else:
     for message in messages:
         fullMessage = getMessageBody(service, 'me', message['id'])
+        # print(json.dumps(fullMessage))
+        # fullMessage = fullMessage.decode("utf-8")
+        if not fullMessage:
+            # There is no message body here, very wierd, let's move on though
+            continue
         fullMessage = removeGarbage(fullMessage)
 
+        messageSuccessCount += 1
+
         print("***************** NEW MSG ***********************")
-        # print("************************* MSG BEGINS *************************************")
-        # print(fullMessage)
-        # print("************************* MSG   ENDS *************************************")
+        print("************************* MSG BEGINS *************************************")
+        print(fullMessage)
+        print("************************* MSG   ENDS *************************************")
 
-        print("Location:" + getLocation(fullMessage))
+        location = getLocation(fullMessage)
+        if location:
+            locationSuccessCount += 1
+        print("Location:" + json.dumps(location))
+        del location
 
-        print("Film:" + getFilm(fullMessage))
+        film = getFilm(fullMessage)
+        if film:
+            filmSuccessCount += 1
+        print("Film:" + json.dumps(film))
+        del film
 
-        print("Date:" + getDate(fullMessage))
+        date = getDate(fullMessage)
+        if date:
+            dateSuccessCount += 1
+        print("Date:" + json.dumps(date))
+        del date
 
-        print("Screen:" + getScreen(fullMessage))
+        screen = getScreen(fullMessage)
+        if screen:
+            screenSuccessCount += 1
+        print("Screen:" + json.dumps(screen))
+        del screen
 
-        # print("Section:" + getSection(fullMessage)) #Standard/Premium
+        # print("Section:" + json.dumps(getSection(fullMessage))) # Standard/Premium
 
-        print("Seat:" + getSeats(fullMessage))  # Likely multiple
+        seats = getSeats(fullMessage)
+        if seats:
+            seatsSuccessCount += 1
+        print("Seat:" + json.dumps(seats))  # Likely multiple
+        del seats
 
-        print("Tickets:" + getTickets(fullMessage))
+        tickets = getTickets(fullMessage)
+        if tickets:
+            ticketsSuccessCount += 1
+        print("Tickets:" + json.dumps(tickets))  # Likely multiple
+        del tickets
 
-        print("Booking Ref:" + getBookingRef(fullMessage))
+        bookingRef = getBookingRef(fullMessage)
+        if bookingRef:
+            bookingRefSuccessCount += 1
+        print("Booking Ref:" + json.dumps(bookingRef))
+        del bookingRef
 
+        totalCost = getTotalCost(fullMessage)
+        if totalCost:
+            totalCostSuccessCount += 1
+        print("Total Cost:" + json.dumps(totalCost))
+        del totalCost
 
+print("Got " + str(messageSuccessCount) + " of " + str(len(messages)) + " messages OK")
+print("Location: " + str(locationSuccessCount))
+print("Film: " + str(filmSuccessCount))
+print("Date: " + str(dateSuccessCount))
+print("Screen: " + str(screenSuccessCount))
+print("Seats: " + str(seatsSuccessCount))
+print("Tickets: " + str(ticketsSuccessCount))
+print("Booking Ref: " + str(bookingRefSuccessCount))
+print("Total Cost: " + str(totalCostSuccessCount))
+
+exit(0)
 gcalService = build('calendar', 'v3', http=creds.authorize(Http()))
 
 # Call the Calendar API
