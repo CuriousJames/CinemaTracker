@@ -10,7 +10,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from apiclient import errors
 import re
-import datetime
+from datetime import datetime
 import json
 
 # Setup the Gmail API
@@ -179,16 +179,20 @@ def getDate(message):
     except IndexError:
         date = False
 
-    return date
+    dateTimeObj = datetime.strptime(date, "%d/%m/%Y %H:%M %p")
+
+    return dateTimeObj
 
 
 def getScreen(message):
-    regex = r"Auditorium:[\s]*([\s\S]*?)[\n\r]"
+    regex = r"Auditorium:[\s]*Screen[\s]*([\s\S]*?)[\n\r]"
     matches = re.findall(regex, message)
     try:
         screen = matches[0]
     except IndexError:
-        screen = False
+        return False
+
+    screen = int(screen)
 
     return screen
 
@@ -210,9 +214,14 @@ def getSeats(message):
     try:
         seats = re.findall(regex2, seatsStr[0])
     except IndexError:
-        seats = False
+        return False
 
-    return seats
+    seatsNew = []
+    for seat in seats:
+        seatNew = [seat[0], int(seat[1])]
+        seatsNew.append(seatNew)
+
+    return seatsNew
 
 
 def getTickets(message):
@@ -221,8 +230,12 @@ def getTickets(message):
     ticketsStr = re.findall(regex, message)
     regex2 = r"[\n\r]*([\s\S]+?): £([\d]+?.[\d]+)"
     tickets = re.findall(regex2, ticketsStr[0])
+    ticketsNew = []
+    for ticket in tickets:
+        ticketNew = [ticket[0], float(ticket[1])]
+        ticketsNew.append(ticketNew)
 
-    return tickets
+    return ticketsNew
 
 
 def getBookingRef(message):
@@ -312,7 +325,8 @@ else:
         date = getDate(fullMessage)
         if date:
             dateSuccessCount += 1
-        print("Date:" + json.dumps(date))
+            date = str(date)
+        print("Date:" + date)
         del date
 
         screen = getScreen(fullMessage)
@@ -361,7 +375,7 @@ exit(0)
 gcalService = build('calendar', 'v3', http=creds.authorize(Http()))
 
 # Call the Calendar API
-now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
 print('Getting the upcoming 10 events')
 events_result = gcalService.events().list(calendarId='primary', timeMin=now, maxResults=10, singleEvents=True, orderBy='startTime').execute()
 events = events_result.get('items', [])
