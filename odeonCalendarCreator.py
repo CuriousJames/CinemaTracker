@@ -12,6 +12,7 @@ from apiclient import errors
 import re
 from datetime import datetime
 import json
+import pytz
 
 # Setup the Gmail API
 SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar'
@@ -181,7 +182,10 @@ def getDate(message):
 
     dateTimeObj = datetime.strptime(date, "%d/%m/%Y %H:%M %p")
 
-    return dateTimeObj
+    ukTime = pytz.timezone("Europe/London")
+    ukDateTimeObj = ukTime.localize(dateTimeObj)
+
+    return ukDateTimeObj
 
 
 def getScreen(message):
@@ -325,8 +329,8 @@ else:
         date = getDate(fullMessage)
         if date:
             dateSuccessCount += 1
-            date = str(date)
-        print("Date:" + date)
+            strDate = str(date)
+        print("Date:" + strDate + " Zone: " + str(date.tzinfo))
         del date
 
         screen = getScreen(fullMessage)
