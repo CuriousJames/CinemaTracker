@@ -387,7 +387,6 @@ else:
         if messageProcessedOk is True:
             # Do Something
             messagesProcessedOk.append(message['id'])
-            break
 
 data = {"messagesProcessedOk": messagesProcessedOk}
 
