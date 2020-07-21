@@ -294,11 +294,27 @@ ticketsSuccessCount = 0
 bookingRefSuccessCount = 0
 totalCostSuccessCount = 0
 
+try:
+    with open("data.json") as json_file:
+        data = json.load(json_file)
+        if data["messagesProcessedOk"]:
+            messagesProcessedOk = data["messagesProcessedOk"]
+        else:
+            messagesProcessedOk = []
+except Exception:
+    messagesProcessedOk = []
+
 if messages == "false":
     print("No Messages match that query, or there was a problem")
     exit(0)
 else:
     for message in messages:
+        if message['id'] in messagesProcessedOk:
+            # This message has been processed already, skip it
+            continue
+
+        # Reset processed OK variable
+        messageProcessedOk = False
         fullMessage = getMessageBody(service, 'me', message['id'])
         # print(json.dumps(fullMessage))
         # fullMessage = fullMessage.decode("utf-8")
@@ -364,6 +380,19 @@ else:
             totalCostSuccessCount += 1
         print("Total Cost:" + json.dumps(totalCost))
         del totalCost
+
+        # For the time being let's assume it was Processed OK
+        messageProcessedOk = True
+
+        if messageProcessedOk is True:
+            # Do Something
+            messagesProcessedOk.append(message['id'])
+            break
+
+data = {"messagesProcessedOk": messagesProcessedOk}
+
+with open('data.json', 'w') as outfile:
+    json.dump(data, outfile)
 
 print("Got " + str(messageSuccessCount) + " of " + str(len(messages)) + " messages OK")
 print("Location: " + str(locationSuccessCount))
