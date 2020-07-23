@@ -1,10 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Git
 /.git
-/vendor/
+
+# Dev env (visual studio code)
+/.vscode/
+
+# Google API Required Files
 /clientSecretGoogle.json
-/composer.json
-/composer.lock
 /credentialsGCalendar.json
 /credentialsGmail.json
-userCredentialsGoogle.json
-.vscode/
-data.json
+/userCredentialsGoogle.json
+
+# Local Storage
+/data.json
