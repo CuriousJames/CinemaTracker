@@ -278,7 +278,10 @@ def scrapeOdeonTable(message):
     return new_table
 
 
-messages = listMessagesMatchingQuery(service, 'me', 'from:(booking@odeoncinemas.info) subject:(ODEON BOOKING CONFIRMATION)')
+# messageSource = "json"
+messageSource = "gmail"
+saveMessages = True
+messagesToSave = {}
 
 messageSuccessCount = 0
 locationSuccessCount = 0
@@ -291,33 +294,75 @@ bookingRefSuccessCount = 0
 totalCostSuccessCount = 0
 
 try:
-    with open("data.json") as json_file:
+    with open("messageIdsProcessedOk.json") as json_file:
         data = json.load(json_file)
-        if data["messagesProcessedOk"]:
-            messagesProcessedOk = data["messagesProcessedOk"]
+        del json_file
+        if data:
+            messageIdsProcessedOk = data
+            del data
         else:
-            messagesProcessedOk = []
+            messageIdsProcessedOk = []
 except Exception:
-    messagesProcessedOk = []
+    messageIdsProcessedOk = []
 
-if messages == "false":
-    print("No Messages match that query, or there was a problem")
+try:
+    with open("messages.json") as json_file:
+        data = json.load(json_file)
+        del json_file
+        if data:
+            fileMessages = data
+            del data
+        else:
+            fileMessages = {}
+except Exception:
+    fileMessages = {}
+
+if messageSource == "gmail":
+    messages = listMessagesMatchingQuery(service, 'me', 'from:(booking@odeoncinemas.info) subject:(ODEON BOOKING CONFIRMATION)')
+    messagesToSave = fileMessages
+elif messageSource == "json":
+    messages = fileMessages
+else:
+    print("Incorrect or no message source specified")
+    exit()
+
+if messages == "false" or messages is False:
+    print("No Messages match that query (gmail), or were found (json), or there was a different problem")
     exit(0)
 else:
     for message in messages:
-        if message['id'] in messagesProcessedOk:
-            # This message has been processed already, skip it
-            continue
-
         # Reset processed OK variable
         messageProcessedOk = False
-        fullMessage = getMessageBody(service, 'me', message['id'])
+
+        if messageSource == "gmail":
+            messageId = message['id']
+        elif messageSource == "json":
+            messageId = message
+
+        if messageId in messageIdsProcessedOk:
+            # This message has been processed already, skip it
+            continue
+        else:
+            print("hello")
+
+        if messageSource == "gmail":
+            fullRawMessage = getMessageBody(service, 'me', message['id'])
+        else:
+            fullRawMessage = messages[message]
+
         # print(json.dumps(fullMessage))
         # fullMessage = fullMessage.decode("utf-8")
-        if not fullMessage:
+        if not fullRawMessage:
             # There is no message body here, very wierd, let's move on though
             continue
-        fullMessage = removeGarbage(fullMessage)
+        else:
+            messagesToSave[messageId] = fullRawMessage
+
+        fullMessage = removeGarbage(fullRawMessage)
+
+        if fullMessage is False:
+            # Was unable to get full message
+            continue
 
         messageSuccessCount += 1
 
@@ -382,12 +427,15 @@ else:
 
         if messageProcessedOk is True:
             # Do Something
-            messagesProcessedOk.append(message['id'])
+            messageIdsProcessedOk.append(messageId)
 
-data = {"messagesProcessedOk": messagesProcessedOk}
+if messageIdsProcessedOk:
+    with open('messageIdsProcessedOk.json', 'w') as outfile:
+        json.dump(messageIdsProcessedOk, outfile)
 
-with open('data.json', 'w') as outfile:
-    json.dump(data, outfile)
+if saveMessages is True and messageSource == "gmail":
+    with open('messages.json', 'w') as outfile:
+        json.dump(messagesToSave, outfile)
 
 print("Got " + str(messageSuccessCount) + " of " + str(len(messages)) + " messages OK")
 print("Location: " + str(locationSuccessCount))

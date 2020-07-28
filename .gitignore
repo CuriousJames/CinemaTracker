@@ -15,5 +15,6 @@ __pycache__/
 /credentialsGmail.json
 /userCredentialsGoogle.json
 
-# Local Storage
-/data.json
+# Local Message Storage
+/messages.json
+/messageIdsProcessedOk.json
