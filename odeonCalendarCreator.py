@@ -367,8 +367,6 @@ else:
             # Was unable to get full message
             continue
 
-        messageSuccessCount += 1
-
         print("***************** NEW MSG ***********************")
         print("************************* MSG BEGINS *************************************")
         print(fullMessage)
@@ -444,6 +442,7 @@ else:
         if messageProcessedOk is True:
             # Do Something
             messageIdsProcessedOk.append(messageId)
+            messageSuccessCount += 1
 
 if messageIdsProcessedOk:
     with open('messageIdsProcessedOk.json', 'w') as outfile:
