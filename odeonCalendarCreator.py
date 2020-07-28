@@ -283,8 +283,8 @@ def scrapeOdeonTable(message):
     return new_table
 
 
-# messageSource = "json"
-messageSource = "gmail"
+messageSource = "json"
+# messageSource = "gmail"
 saveMessages = True
 messagesToSave = {}
 
@@ -336,8 +336,8 @@ if messages == "false" or messages is False:
     exit(0)
 else:
     for message in messages:
-        # Reset processed OK variable
-        messageProcessedOk = False
+        # Reset variable to True - it will turn to false if any part fails...
+        messageProcessedOk = True
 
         if messageSource == "gmail":
             messageId = message['id']
@@ -377,12 +377,16 @@ else:
         location = getLocation(fullMessage)
         if location:
             locationSuccessCount += 1
+        else:
+            messageProcessedOk = False
         print("Location:" + json.dumps(location))
         del location
 
         film = getFilm(fullMessage)
         if film:
             filmSuccessCount += 1
+        else:
+            messageProcessedOk = False
         print("Film:" + json.dumps(film))
         del film
 
@@ -390,12 +394,16 @@ else:
         if date:
             dateSuccessCount += 1
             strDate = str(date)
+        else:
+            messageProcessedOk = False
         print("Date:" + strDate + " Zone: " + str(date.tzinfo))
         del date
 
         screen = getScreen(fullMessage)
         if screen:
             screenSuccessCount += 1
+        else:
+            messageProcessedOk = False
         print("Screen:" + json.dumps(screen))
         del screen
 
@@ -404,29 +412,34 @@ else:
         seats = getSeats(fullMessage)
         if seats:
             seatsSuccessCount += 1
+        else:
+            messageProcessedOk = False
         print("Seat:" + json.dumps(seats))  # Likely multiple
         del seats
 
         tickets = getTickets(fullMessage)
         if tickets:
             ticketsSuccessCount += 1
+        else:
+            messageProcessedOk = False
         print("Tickets:" + json.dumps(tickets))  # Likely multiple
         del tickets
 
         bookingRef = getBookingRef(fullMessage)
         if bookingRef:
             bookingRefSuccessCount += 1
+        else:
+            messageProcessedOk = False
         print("Booking Ref:" + json.dumps(bookingRef))
         del bookingRef
 
         totalCost = getTotalCost(fullMessage)
         if totalCost:
             totalCostSuccessCount += 1
+        else:
+            messageProcessedOk = False
         print("Total Cost:" + json.dumps(totalCost))
         del totalCost
-
-        # For the time being let's assume it was Processed OK
-        messageProcessedOk = True
 
         if messageProcessedOk is True:
             # Do Something
