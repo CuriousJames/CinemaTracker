@@ -46,7 +46,8 @@ def listMessagesMatchingQuery(service, user_id, query=''):
         while 'nextPageToken' in response:
             page_token = response['nextPageToken']
             response = service.users().messages().list(userId=user_id, q=query, pageToken=page_token).execute()
-            messages.extend(response['messages'])
+            if 'messages' in response:
+                messages.extend(response['messages'])
         return messages
     except errors.HttpError as error:
         print("An error occurred: " + error)
