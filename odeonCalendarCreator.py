@@ -114,17 +114,13 @@ def getMessageBody(service, user_id, msg_id):
 
 
 def removeGarbage(message):
-    message = re.findall(r"(Cinema:[\s\S]*?Your booking reference is:\s+[\d]*)", message)
+    shortMessage = re.findall(r"(Cinema:[\s\S]*?Your booking reference is:\s+[\d]*)", message)
     try:
-        shortMessage = re.sub(r"(<[\S]*?>|[ ]*=20)", "", message[0])
+        shortMessage = re.sub(r"(<[\S]*?>|[ ]*=20)", "", shortMessage[0])
     except IndexError:
         print("failed message main body")
-        print(json.dump(message))
+        print(json.dumps(message))
         return False
-
-    shortMessage = re.sub(r"(=EF=BF=BD|=A3)", "£", shortMessage)
-
-    return shortMessage
 
 
 def getLocation(message):
