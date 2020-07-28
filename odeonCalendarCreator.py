@@ -122,6 +122,10 @@ def removeGarbage(message):
         print(json.dumps(message))
         return False
 
+    shortMessage = re.sub(r"(=EF=BF=BD|=A3)", "£", shortMessage)
+
+    return shortMessage
+
 
 def getLocation(message):
     # location = message.partition('Cinema:-')
@@ -342,8 +346,6 @@ else:
         if messageId in messageIdsProcessedOk:
             # This message has been processed already, skip it
             continue
-        else:
-            print("hello")
 
         if messageSource == "gmail":
             fullRawMessage = getMessageBody(service, 'me', message['id'])
@@ -360,7 +362,7 @@ else:
 
         fullMessage = removeGarbage(fullRawMessage)
 
-        if fullMessage is False:
+        if not fullMessage:
             # Was unable to get full message
             continue
 
