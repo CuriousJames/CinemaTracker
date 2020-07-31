@@ -378,7 +378,6 @@ else:
         else:
             messageProcessedOk = False
         print("Location:" + json.dumps(location))
-        del location
 
         film = getFilm(fullMessage)
         if film:
@@ -386,7 +385,6 @@ else:
         else:
             messageProcessedOk = False
         print("Film:" + json.dumps(film))
-        del film
 
         date = getDate(fullMessage)
         if date:
@@ -395,7 +393,6 @@ else:
         else:
             messageProcessedOk = False
         print("Date:" + strDate + " Zone: " + str(date.tzinfo))
-        del date
 
         screen = getScreen(fullMessage)
         if screen:
@@ -403,7 +400,6 @@ else:
         else:
             messageProcessedOk = False
         print("Screen:" + json.dumps(screen))
-        del screen
 
         # print("Section:" + json.dumps(getSection(fullMessage))) # Standard/Premium
 
@@ -413,7 +409,6 @@ else:
         else:
             messageProcessedOk = False
         print("Seat:" + json.dumps(seats))  # Likely multiple
-        del seats
 
         tickets = getTickets(fullMessage)
         if tickets:
@@ -421,7 +416,6 @@ else:
         else:
             messageProcessedOk = False
         print("Tickets:" + json.dumps(tickets))  # Likely multiple
-        del tickets
 
         bookingRef = getBookingRef(fullMessage)
         if bookingRef:
@@ -429,20 +423,27 @@ else:
         else:
             messageProcessedOk = False
         print("Booking Ref:" + json.dumps(bookingRef))
-        del bookingRef
 
         totalCost = getTotalCost(fullMessage)
-        if totalCost:
+        estimatedTotalCost = 0.0
+        for ticket in tickets:
+            estimatedTotalCost += ticket[1]
+        print("est cost: " + str(estimatedTotalCost))
+
+        # We don't expect 'totalCost' to be found if the estimated cost is zero (in case of limiteless bookings)
+        if totalCost or not estimatedTotalCost:
             totalCostSuccessCount += 1
         else:
             messageProcessedOk = False
         print("Total Cost:" + json.dumps(totalCost))
-        del totalCost
 
         if messageProcessedOk is True:
             # Do Something
             messageIdsProcessedOk.append(messageId)
             messageSuccessCount += 1
+
+        # Cleanup variables ready for next for loop
+        del location, film, date, screen, bookingRef, totalCost, seats, estimatedTotalCost
 
 if messageIdsProcessedOk:
     with open('messageIdsProcessedOk.json', 'w') as outfile:
